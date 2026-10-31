@@ -1,0 +1,14 @@
+{
+  "id": "safelight.export",
+  "name": "Export",
+  "version": "1.0.0",
+  "description": "Export photos with format, size and quality options.",
+  "author": "Anthony Reimche",
+  "main": "dist/index.js",
+  "license": "GPL-3.0-only",
+  "categories": ["export"],
+  "keywords": ["export", "jpeg", "png", "tiff", "webp", "zip", "resize", "sharpening", "preset"],
+  "repository": "anthonyreimche/Export",
+  "worksWith": ["anthonyreimche/Library"],
+  "minAppVersion": "3.2.0"
+}
