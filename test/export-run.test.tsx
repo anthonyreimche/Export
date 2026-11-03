@@ -213,6 +213,42 @@ describe("the end of a run", () => {
     expect(exportButton().textContent).toBe("Export 2");
   });
 
+  it("cancels a run from its Cancel button and says how many it exported", async () => {
+    const rig = mount({ selected: ["a", "b", "c"] });
+    fireEvent.click(button("Files"));
+    expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
+    let finish: (r: ExportResult) => void = () => {};
+    rig.nextExport.pending = new Promise((resolve) => (finish = resolve));
+    await runExport();
+
+    const signal = rig.exports[0].signal;
+    expect(signal?.aborted).toBe(false);
+    fireEvent.click(button("Cancel"));
+    expect(signal?.aborted).toBe(true);
+    expect(button("Cancel").hasAttribute("disabled")).toBe(true);
+
+    await act(async () => finish({ ...RESULT, exported: 1, cancelled: true }));
+    expect(status()).toBe("Cancelled after exporting 1 photo.");
+    expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
+  });
+
+  it("hands each run a fresh signal", async () => {
+    const rig = mount({ active: "a" });
+    await runExport();
+    await runExport();
+    expect(rig.exports[0].signal).toBeInstanceOf(AbortSignal);
+    expect(rig.exports[1].signal).not.toBe(rig.exports[0].signal);
+    expect(rig.exports[1].signal?.aborted).toBe(false);
+  });
+
+  it("says why a run stopped early and how many it wrote", async () => {
+    const rig = mount({ selected: ["a", "b", "c"] });
+    fireEvent.click(button("Files"));
+    rig.nextExport.result = { ...RESULT, exported: 2, failed: ["c.RAF"], stopped: "the disk is full" };
+    await runExport();
+    expect(status()).toBe("Stopped: the disk is full, after exporting 2 photos.");
+  });
+
   it("says why when the export throws", async () => {
     const rig = mount({ active: "a" });
     rig.nextExport.error = new Error("WebGL is unavailable");

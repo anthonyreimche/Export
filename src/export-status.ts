@@ -9,15 +9,21 @@ import type { ExportResult } from "./safelight";
  *  and any that fell short of what was asked. A copy of core's
  *  `exportStatus` (src/modules/export/export-image.ts). */
 export function exportStatus(result: ExportResult): string {
-  let msg =
-    result.failed.length === 0
-      ? `Exported ${result.exported} photo${result.exported === 1 ? "" : "s"}.`
-      : `Exported ${result.exported}; ${result.failed.length} could not be exported.`;
+  const photos = `${result.exported} photo${result.exported === 1 ? "" : "s"}`;
+  const when = result.exported === 0 ? "before exporting any photos" : `after exporting ${photos}`;
+  let msg: string;
+  if (result.stopped) msg = `Stopped: ${result.stopped}, ${when}.`;
+  else if (result.cancelled) msg = `Cancelled ${when}.`;
+  else if (result.failed.length === 0) msg = `Exported ${photos}.`;
+  else msg = `Exported ${result.exported}; ${result.failed.length} could not be exported.`;
   if (result.degradedTo8Bit > 0) {
     msg += ` ${result.degradedTo8Bit} exported as 8-bit (device can't render 16-bit).`;
   }
   if (result.reducedPrecision > 0) {
     msg += ` ${result.reducedPrecision} exported at reduced 16-bit precision (device can't render full precision).`;
+  }
+  if (result.withoutStages) {
+    msg += ` ${result.withoutStages} exported without an extension's effect (its shader failed to build).`;
   }
   if (result.zipFellBack) {
     msg += " ZIP exceeded 4 GiB; delivered as individual files.";

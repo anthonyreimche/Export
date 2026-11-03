@@ -27,6 +27,28 @@ describe("the export status line", () => {
     );
   });
 
+  it("says a cancelled batch was cancelled, with how many it exported", () => {
+    expect(exportStatus(result({ exported: 2, cancelled: true }))).toBe("Cancelled after exporting 2 photos.");
+    expect(exportStatus(result({ exported: 1, cancelled: true }))).toBe("Cancelled after exporting 1 photo.");
+    expect(exportStatus(result({ exported: 0, cancelled: true }))).toBe("Cancelled before exporting any photos.");
+  });
+
+  it("says why a stopped batch stopped, with how many it exported", () => {
+    expect(
+      exportStatus(result({ exported: 2, failed: ["c.RAF"], stopped: "the disk is full" })),
+    ).toBe("Stopped: the disk is full, after exporting 2 photos.");
+    expect(exportStatus(result({ exported: 0, stopped: "the folder is read-only" }))).toBe(
+      "Stopped: the folder is read-only, before exporting any photos.",
+    );
+  });
+
+  it("names the photos exported without an extension's effect", () => {
+    expect(exportStatus(result({ withoutStages: 2 }))).toBe(
+      "Exported 3 photos. 2 exported without an extension's effect (its shader failed to build).",
+    );
+    expect(exportStatus(result({ withoutStages: 0 }))).toBe("Exported 3 photos.");
+  });
+
   it("names the photos at reduced 16-bit precision beside those at 8-bit", () => {
     expect(exportStatus(result({ degradedTo8Bit: 1, reducedPrecision: 2, zipFellBack: true }))).toBe(
       "Exported 3 photos. 1 exported as 8-bit (device can't render 16-bit). " +

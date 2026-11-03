@@ -8,6 +8,7 @@ import * as React from "react";
 import { create } from "zustand";
 import type {
   AppSettings,
+  ButtonProps,
   CatalogPhoto,
   CatalogStoreState,
   ExportProgress,
@@ -63,6 +64,7 @@ export interface ExportCall {
   settings: ExportSettings;
   destDir: FileSystemDirectoryHandle | undefined;
   onProgress: ((p: ExportProgress) => void) | undefined;
+  signal: AbortSignal | undefined;
 }
 
 export interface Rig {
@@ -107,6 +109,10 @@ function FakeSlider({ label, value, min, max, step, onChange }: SliderProps) {
     step,
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => onChange(Number(e.target.value)),
   });
+}
+
+function FakeButton({ variant: _variant, size: _size, type = "button", ...rest }: ButtonProps) {
+  return React.createElement("button", { type, ...rest });
 }
 
 function FakeResolutionControl({ value, onChange }: ResolutionControlProps) {
@@ -154,7 +160,7 @@ export function fakeApi({
     react: React,
     registerPanel: (c) => void panels.push(c),
     registerStylesheet: (c) => void stylesheets.push(c),
-    ui: { tokens: TOKENS },
+    ui: { tokens: TOKENS, Button: FakeButton },
     components: { Panel: FakePanel, Slider: FakeSlider, ResolutionControl: FakeResolutionControl },
     stores: { useCatalogStore: catalog, useSettings: settings },
     registry: { use: (selector) => registry(selector) },
@@ -165,8 +171,8 @@ export function fakeApi({
       },
     },
     export: {
-      exportPhotos: (targets, run, onProgress, destDir) => {
-        exports.push({ photos: targets, settings: run, destDir, onProgress });
+      exportPhotos: (targets, run, onProgress, destDir, options) => {
+        exports.push({ photos: targets, settings: run, destDir, onProgress, signal: options?.signal });
         if (nextExport.pending) return nextExport.pending;
         if (nextExport.error) return Promise.reject(nextExport.error);
         return Promise.resolve(nextExport.result ?? { ...RESULT, exported: targets.length });

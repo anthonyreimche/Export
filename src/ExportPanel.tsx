@@ -116,6 +116,7 @@ function ProcessorFieldRow({
 
 export function ExportPanel() {
   const { Panel, Slider, ResolutionControl } = api.components;
+  const { Button } = api.ui;
   const { useCatalogStore, useSettings } = api.stores;
   const photos = useCatalogStore((s) => s.photos);
   const selectedIds = useCatalogStore((s) => s.selectedIds);
@@ -136,6 +137,8 @@ export function ExportPanel() {
   const [delivery, setDelivery] = React.useState<DeliveryMode>("folder");
   const [destDir, setDestDir] = React.useState<FileSystemDirectoryHandle | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const runRef = React.useRef<AbortController | null>(null);
+  const [cancelling, setCancelling] = React.useState(false);
   const [progress, setProgress] = React.useState<{ done: number; total: number } | null>(null);
   const [status, setStatus] = React.useState<string | null>(null);
   const [failures, setFailures] = React.useState<ExportResult["failures"]>(undefined);
@@ -255,7 +258,10 @@ export function ExportPanel() {
       setDestDir(dir);
     }
 
+    const run = new AbortController();
+    runRef.current = run;
     setBusy(true);
+    setCancelling(false);
     setStatus(null);
     setFailures(undefined);
     setExportedDir(null);
@@ -281,6 +287,7 @@ export function ExportPanel() {
         settings,
         (p) => setProgress({ done: p.done, total: p.total }),
         dir ?? undefined,
+        { signal: run.signal },
       );
       setStatus(exportStatus(result));
       setFailures(result.failures);
@@ -291,9 +298,16 @@ export function ExportPanel() {
     } catch (e) {
       setStatus(`Export failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
+      runRef.current = null;
       setBusy(false);
+      setCancelling(false);
       setProgress(null);
     }
+  };
+
+  const cancelExport = () => {
+    runRef.current?.abort();
+    setCancelling(true);
   };
 
   const template =
@@ -514,6 +528,11 @@ export function ExportPanel() {
                 ? `Export ${targets.length}`
                 : "Export"}
           </button>
+          {busy && (
+            <Button size="sm" onClick={cancelExport} disabled={cancelling}>
+              Cancel
+            </Button>
+          )}
           {savingPreset ? (
             <form
               className={cls.presetForm}

@@ -10,7 +10,7 @@
 // src/state/settings-store.ts. Extensions are standalone bundles, so the host's
 // source is not on the type path; React types come from @types/react (dev only).
 
-import type { ComponentType, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ComponentType, ReactNode } from "react";
 
 export interface StoreApi<T> {
   (): T;
@@ -91,7 +91,29 @@ export interface ExportSettings {
   pngBitDepth?: 8 | 16;
   includeMetadata?: boolean;
   includeLocation?: boolean;
+  /** A folder export's answer to a file of the same name already there:
+   *  "number" writes beside it as "name (2).ext", "replace" writes over it.
+   *  The original of a photo in the catalog is never replaced; it gets a
+   *  number either way. Left out, the Preference decides. */
+  ifExists?: "number" | "replace";
 }
+
+/** The output an export asks for, as an export processor is told it: the
+ *  export settings without the delivery, the filename template or the
+ *  processors' own settings. */
+export type ExportOutput = Pick<
+  ExportSettings,
+  | "format"
+  | "quality"
+  | "longEdge"
+  | "colorSpace"
+  | "tiffBitDepth"
+  | "pngBitDepth"
+  | "sharpenAmount"
+  | "sharpenRadius"
+  | "includeMetadata"
+  | "includeLocation"
+>;
 
 export interface ExportProgress {
   done: number;
@@ -116,6 +138,20 @@ export interface ExportResult {
   reducedPrecision: number;
   /** A ZIP overflowed ZIP32 and was delivered as individual files. */
   zipFellBack?: boolean;
+  /** The caller's signal ended the batch before every photo was tried;
+   *  `exported` counts what was done by then. */
+  cancelled?: true;
+  /** Why the batch ended early on a failure every later write would meet too
+   *  (a full disk, a read-only folder), worded for the user. */
+  stopped?: string;
+  /** Count of the exported photos drawn without an extension stage whose
+   *  shader failed to build during the batch, so its effect is missing. */
+  withoutStages?: number;
+}
+
+export interface ExportPhotosOptions {
+  /** Stop before the next photo once this fires. */
+  signal?: AbortSignal;
 }
 
 /** One settings field of an export processor's section in the Export panel. */
@@ -212,6 +248,12 @@ export interface StylesheetContribution {
   css: string;
 }
 
+/** `api.ui.Button`: a theme-styled button. */
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: "primary" | "secondary" | "ghost" | "danger";
+  size?: "sm" | "md";
+}
+
 /** The theme's CSS variables as `var(--color-…)` strings. */
 export interface UiTokens {
   readonly surface2: string;
@@ -231,7 +273,7 @@ export interface SafelightAPI {
   react: typeof import("react");
   registerPanel(c: PanelContribution): void;
   registerStylesheet(c: StylesheetContribution): void;
-  ui: { tokens: UiTokens };
+  ui: { tokens: UiTokens; Button: ComponentType<ButtonProps> };
   components: {
     Panel: ComponentType<PanelProps>;
     Slider: ComponentType<SliderProps>;
@@ -253,12 +295,15 @@ export interface SafelightAPI {
   };
   export: {
     /** Render, run the export processors, name and deliver the files
-     *  (downloads, a ZIP, or into `destDir`). */
+     *  (downloads, a ZIP, or into `destDir`). A full disk or a fired
+     *  `options.signal` ends the batch early, with `stopped` or `cancelled`
+     *  set on the result. */
     exportPhotos(
       photos: CatalogPhoto[],
       settings: ExportSettings,
       onProgress?: (p: ExportProgress) => void,
       destDir?: FileSystemDirectoryHandle,
+      options?: ExportPhotosOptions,
     ): Promise<ExportResult>;
     /** True when these settings write ProPhoto RGB at 8 bits a channel. */
     proPhotoAt8Bit(
