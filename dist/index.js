@@ -126,8 +126,8 @@ function ee({ failures: t }) {
 //#endregion
 //#region src/export-status.ts
 function te(e) {
-	let t = e.failed.length === 0 ? `Exported ${e.exported} photo${e.exported === 1 ? "" : "s"}.` : `Exported ${e.exported}; ${e.failed.length} could not be exported.`;
-	return e.degradedTo8Bit > 0 && (t += ` ${e.degradedTo8Bit} exported as 8-bit (device can't render 16-bit).`), e.reducedPrecision > 0 && (t += ` ${e.reducedPrecision} exported at reduced 16-bit precision (device can't render full precision).`), e.zipFellBack && (t += " ZIP exceeded 4 GiB; delivered as individual files."), t;
+	let t = `${e.exported} photo${e.exported === 1 ? "" : "s"}`, n = e.exported === 0 ? "before exporting any photos" : `after exporting ${t}`, r;
+	return r = e.stopped ? `Stopped: ${e.stopped}, ${n}.` : e.cancelled ? `Cancelled ${n}.` : e.failed.length === 0 ? `Exported ${t}.` : `Exported ${e.exported}; ${e.failed.length} could not be exported.`, e.degradedTo8Bit > 0 && (r += ` ${e.degradedTo8Bit} exported as 8-bit (device can't render 16-bit).`), e.reducedPrecision > 0 && (r += ` ${e.reducedPrecision} exported at reduced 16-bit precision (device can't render full precision).`), e.withoutStages && (r += ` ${e.withoutStages} exported without an extension's effect (its shader failed to build).`), e.zipFellBack && (r += " ZIP exceeded 4 GiB; delivered as individual files."), r;
 }
 //#endregion
 //#region src/ExportPanel.tsx
@@ -154,8 +154,8 @@ var ne = [
 }, {
 	value: 16,
 	label: "16-bit"
-}], ie = "safelight-export";
-function d({ field: n, value: r, onChange: o }) {
+}], d = "safelight-export";
+function f({ field: n, value: r, onChange: o }) {
 	let { Slider: s } = t.components;
 	if (n.type === "boolean") {
 		let t = typeof r == "boolean" ? r : n.default;
@@ -198,13 +198,13 @@ function d({ field: n, value: r, onChange: o }) {
 	}
 	return null;
 }
-function f() {
-	let { Panel: n, Slider: r, ResolutionControl: o } = t.components, { useCatalogStore: s, useSettings: c } = t.stores, l = s((e) => e.photos), u = s((e) => e.selectedIds), f = s((e) => e.activePhotoId), p = () => c.getState(), [m, h] = e.useState(() => p().exportFormat), [g, ae] = e.useState(() => p().exportQuality), [_, oe] = e.useState(() => p().exportLongEdge), [v, y] = e.useState(() => p().exportTiffBitDepth), [b, x] = e.useState(() => p().exportPngBitDepth), [S, se] = e.useState(() => p().exportColorSpace), C = c((e) => e.exportIncludeMetadata), ce = c((e) => e.exportIncludeLocation), [w, T] = e.useState("folder"), [E, D] = e.useState(null), [O, k] = e.useState(!1), [A, j] = e.useState(null), [M, N] = e.useState(null), [le, P] = e.useState(void 0), [F, I] = e.useState(null), [L, R] = e.useState(0), [z, B] = e.useState(1), V = c((e) => e.exportPresets), [ue, H] = e.useState(!1), [U, W] = e.useState(""), G = t.registry.use((e) => e.exportProcessors), K = t.registry.use((e) => e.filenameTemplates), de = e.useMemo(() => Object.values(G).sort((e, t) => e.order - t.order), [G]), q = e.useMemo(() => Object.values(K), [K]), [J, fe] = e.useState({}), [Y, X] = e.useState();
+function p() {
+	let { Panel: n, Slider: r, ResolutionControl: o } = t.components, { Button: s } = t.ui, { useCatalogStore: c, useSettings: l } = t.stores, u = c((e) => e.photos), p = c((e) => e.selectedIds), m = c((e) => e.activePhotoId), h = () => l.getState(), [g, _] = e.useState(() => h().exportFormat), [v, ie] = e.useState(() => h().exportQuality), [y, ae] = e.useState(() => h().exportLongEdge), [b, x] = e.useState(() => h().exportTiffBitDepth), [S, C] = e.useState(() => h().exportPngBitDepth), [w, oe] = e.useState(() => h().exportColorSpace), T = l((e) => e.exportIncludeMetadata), E = l((e) => e.exportIncludeLocation), [D, O] = e.useState("folder"), [k, A] = e.useState(null), [j, se] = e.useState(!1), M = e.useRef(null), [ce, N] = e.useState(!1), [P, F] = e.useState(null), [I, L] = e.useState(null), [le, R] = e.useState(void 0), [z, B] = e.useState(null), [V, H] = e.useState(0), [U, W] = e.useState(1), G = l((e) => e.exportPresets), [ue, K] = e.useState(!1), [q, de] = e.useState(""), fe = t.registry.use((e) => e.exportProcessors), pe = t.registry.use((e) => e.filenameTemplates), me = e.useMemo(() => Object.values(fe).sort((e, t) => e.order - t.order), [fe]), J = e.useMemo(() => Object.values(pe), [pe]), [he, ge] = e.useState({}), [Y, X] = e.useState();
 	e.useEffect(() => {
-		Y !== void 0 && !q.some((e) => e.id === Y) && X(void 0);
-	}, [q, Y]);
-	let pe = (e, t, n) => {
-		fe((r) => ({
+		Y !== void 0 && !J.some((e) => e.id === Y) && X(void 0);
+	}, [J, Y]);
+	let _e = (e, t, n) => {
+		ge((r) => ({
 			...r,
 			[e]: {
 				...r[e] ?? {},
@@ -212,234 +212,241 @@ function f() {
 			}
 		}));
 	}, Z = e.useMemo(() => {
-		if (u.size > 0) return l.filter((e) => u.has(e.id));
-		if (f) {
-			let e = l.find((e) => e.id === f);
+		if (p.size > 0) return u.filter((e) => p.has(e.id));
+		if (m) {
+			let e = u.find((e) => e.id === m);
 			return e ? [e] : [];
 		}
 		return [];
 	}, [
-		l,
 		u,
-		f
-	]), me = m === "image/jpeg" || m === "image/webp", Q = m === "image/tiff", he = Q || m === "image/png", $ = Q ? v : b, ge = Q ? y : x, _e = {
-		format: m,
-		tiffBitDepth: v,
-		pngBitDepth: b
-	}, ve = t.export.proPhotoAt8Bit({
-		..._e,
-		colorSpace: S
+		p,
+		m
+	]), ve = g === "image/jpeg" || g === "image/webp", Q = g === "image/tiff", ye = Q || g === "image/png", $ = Q ? b : S, be = Q ? x : C, xe = {
+		format: g,
+		tiffBitDepth: b,
+		pngBitDepth: S
+	}, Se = t.export.proPhotoAt8Bit({
+		...xe,
+		colorSpace: w
 	});
 	e.useEffect(() => {
-		Z.length === 1 && (w === "zip" || w === "folder") && T("files");
-	}, [Z.length, w]);
-	let ye = (e) => {
-		h(e.format), ae(e.quality), oe(e.longEdge), R(e.sharpenAmount), B(e.sharpenRadius), se(e.colorSpace), e.tiffBitDepth && y(e.tiffBitDepth), e.pngBitDepth && x(e.pngBitDepth);
-	}, be = () => {
-		let e = U.trim();
+		Z.length === 1 && (D === "zip" || D === "folder") && O("files");
+	}, [Z.length, D]);
+	let Ce = (e) => {
+		_(e.format), ie(e.quality), ae(e.longEdge), H(e.sharpenAmount), W(e.sharpenRadius), oe(e.colorSpace), e.tiffBitDepth && x(e.tiffBitDepth), e.pngBitDepth && C(e.pngBitDepth);
+	}, we = () => {
+		let e = q.trim();
 		if (!e) return;
 		let n = {
 			name: e,
-			format: m,
-			quality: g,
-			longEdge: _,
-			colorSpace: S,
-			sharpenAmount: L,
-			sharpenRadius: z,
-			tiffBitDepth: v,
-			pngBitDepth: b
-		}, r = V.filter((t) => t.name !== e);
-		t.appSettings.update({ exportPresets: [...r, n] }), H(!1), W("");
-	}, xe = (e) => {
-		t.appSettings.update({ exportPresets: V.filter((t) => t.name !== e) });
-	}, Se = async () => {
-		let e = await t.project.pickDirectory(ie);
-		e && (D(e), T("folder"));
-	}, Ce = async () => {
-		if (O || Z.length === 0) return;
-		let e = E;
-		if (w === "folder" && !e) {
-			if (e = await t.project.pickDirectory(ie), !e) return;
-			D(e);
+			format: g,
+			quality: v,
+			longEdge: y,
+			colorSpace: w,
+			sharpenAmount: V,
+			sharpenRadius: U,
+			tiffBitDepth: b,
+			pngBitDepth: S
+		}, r = G.filter((t) => t.name !== e);
+		t.appSettings.update({ exportPresets: [...r, n] }), K(!1), de("");
+	}, Te = (e) => {
+		t.appSettings.update({ exportPresets: G.filter((t) => t.name !== e) });
+	}, Ee = async () => {
+		let e = await t.project.pickDirectory(d);
+		e && (A(e), O("folder"));
+	}, De = async () => {
+		if (j || Z.length === 0) return;
+		let e = k;
+		if (D === "folder" && !e) {
+			if (e = await t.project.pickDirectory(d), !e) return;
+			A(e);
 		}
-		k(!0), N(null), P(void 0), I(null), j({
+		let n = new AbortController();
+		M.current = n, se(!0), N(!1), L(null), R(void 0), B(null), F({
 			done: 0,
 			total: Z.length
 		});
-		let n = {
-			..._e,
-			quality: g / 100,
-			longEdge: _,
-			bundle: w === "zip",
-			delivery: w,
-			colorSpace: S,
-			processorSettings: J,
+		let r = {
+			...xe,
+			quality: v / 100,
+			longEdge: y,
+			bundle: D === "zip",
+			delivery: D,
+			colorSpace: w,
+			processorSettings: he,
 			filenameTemplateId: Y,
-			sharpenAmount: L,
-			sharpenRadius: z,
-			includeMetadata: C,
-			includeLocation: ce
+			sharpenAmount: V,
+			sharpenRadius: U,
+			includeMetadata: T,
+			includeLocation: E
 		};
 		try {
-			let r = await t.export.exportPhotos(Z, n, (e) => j({
+			let i = await t.export.exportPhotos(Z, r, (e) => F({
 				done: e.done,
 				total: e.total
-			}), e ?? void 0);
-			if (N(te(r)), P(r.failures), w === "folder" && r.exported > 0) {
+			}), e ?? void 0, { signal: n.signal });
+			if (L(te(i)), R(i.failures), D === "folder" && i.exported > 0) {
 				let n = e ? t.project.pathOf(e) : null;
-				n && I(n);
+				n && B(n);
 			}
 		} catch (e) {
-			N(`Export failed: ${e instanceof Error ? e.message : String(e)}`);
+			L(`Export failed: ${e instanceof Error ? e.message : String(e)}`);
 		} finally {
-			k(!1), j(null);
+			M.current = null, se(!1), N(!1), F(null);
 		}
-	}, we = Y === void 0 ? void 0 : q.find((e) => e.id === Y);
-	return /* @__PURE__ */ e.createElement("div", { className: i.root }, V.length > 0 && /* @__PURE__ */ e.createElement(n, { title: "Preset" }, /* @__PURE__ */ e.createElement("div", { className: i.stack }, V.map((t) => /* @__PURE__ */ e.createElement("div", {
+	}, Oe = () => {
+		M.current?.abort(), N(!0);
+	}, ke = Y === void 0 ? void 0 : J.find((e) => e.id === Y);
+	return /* @__PURE__ */ e.createElement("div", { className: i.root }, G.length > 0 && /* @__PURE__ */ e.createElement(n, { title: "Preset" }, /* @__PURE__ */ e.createElement("div", { className: i.stack }, G.map((t) => /* @__PURE__ */ e.createElement("div", {
 		key: t.name,
 		className: i.presetRow
 	}, /* @__PURE__ */ e.createElement("button", {
-		onClick: () => ye(t),
+		onClick: () => Ce(t),
 		className: `${i.grow} ${i.left} ${a(!1)}`
 	}, t.name), /* @__PURE__ */ e.createElement("button", {
-		onClick: () => xe(t.name),
+		onClick: () => Te(t.name),
 		className: i.presetDelete,
 		title: "Delete preset"
 	}, "×"))))), /* @__PURE__ */ e.createElement(n, { title: "Format" }, /* @__PURE__ */ e.createElement("div", { className: i.segments }, ne.map((t) => /* @__PURE__ */ e.createElement("button", {
 		key: t.value,
-		onClick: () => h(t.value),
-		"aria-pressed": m === t.value,
-		className: `${i.grow} ${a(m === t.value)}`
-	}, t.label))), ve && /* @__PURE__ */ e.createElement("div", { className: i.warning }, /* @__PURE__ */ e.createElement("p", { className: `${i.grow} ${i.note}` }, "ProPhoto at 8 bits can band in smooth gradients."), /* @__PURE__ */ e.createElement("button", {
+		onClick: () => _(t.value),
+		"aria-pressed": g === t.value,
+		className: `${i.grow} ${a(g === t.value)}`
+	}, t.label))), Se && /* @__PURE__ */ e.createElement("div", { className: i.warning }, /* @__PURE__ */ e.createElement("p", { className: `${i.grow} ${i.note}` }, "ProPhoto at 8 bits can band in smooth gradients."), /* @__PURE__ */ e.createElement("button", {
 		onClick: () => {
-			h("image/tiff"), y(16);
+			_("image/tiff"), x(16);
 		},
 		className: `${i.fixed} ${a(!1)}`
-	}, "Use 16-bit TIFF"))), he && /* @__PURE__ */ e.createElement(n, { title: "Bit Depth" }, /* @__PURE__ */ e.createElement("div", { className: i.segments }, re.map((t) => /* @__PURE__ */ e.createElement("button", {
+	}, "Use 16-bit TIFF"))), ye && /* @__PURE__ */ e.createElement(n, { title: "Bit Depth" }, /* @__PURE__ */ e.createElement("div", { className: i.segments }, re.map((t) => /* @__PURE__ */ e.createElement("button", {
 		key: t.value,
-		onClick: () => ge(t.value),
+		onClick: () => be(t.value),
 		"aria-pressed": $ === t.value,
 		className: `${i.grow} ${a($ === t.value)}`
-	}, t.label))), /* @__PURE__ */ e.createElement("p", { className: `${i.note} ${i.hint}` }, $ === 16 ? "16-bit keeps the full editing precision for further work. Output sharpening is applied at 8-bit only." : "8-bit is smaller and universally compatible.")), me && /* @__PURE__ */ e.createElement(n, { title: "Quality" }, /* @__PURE__ */ e.createElement(r, {
+	}, t.label))), /* @__PURE__ */ e.createElement("p", { className: `${i.note} ${i.hint}` }, $ === 16 ? "16-bit keeps the full editing precision for further work. Output sharpening is applied at 8-bit only." : "8-bit is smaller and universally compatible.")), ve && /* @__PURE__ */ e.createElement(n, { title: "Quality" }, /* @__PURE__ */ e.createElement(r, {
 		label: "",
-		value: g,
+		value: v,
 		min: 1,
 		max: 100,
 		defaultValue: 90,
-		onChange: ae
+		onChange: ie
 	})), /* @__PURE__ */ e.createElement(n, { title: "Resolution" }, /* @__PURE__ */ e.createElement(o, {
 		variant: "panel",
-		value: _,
-		onChange: oe
+		value: y,
+		onChange: ae
 	}), /* @__PURE__ */ e.createElement("p", { className: `${i.note} ${i.hint}` }, "Long edge. Output is capped at the largest decodable size.")), /* @__PURE__ */ e.createElement(n, {
 		title: "Output Sharpening",
 		defaultOpen: !1
 	}, /* @__PURE__ */ e.createElement(r, {
 		label: "Amount",
-		value: L,
+		value: V,
 		min: 0,
 		max: 150,
 		step: 1,
 		defaultValue: 0,
-		onChange: R
+		onChange: H
 	}), /* @__PURE__ */ e.createElement(r, {
 		label: "Radius",
-		value: z,
+		value: U,
 		min: .3,
 		max: 3,
 		step: .1,
 		defaultValue: 1,
-		onChange: B
-	}), L === 0 && /* @__PURE__ */ e.createElement("p", { className: `${i.note} ${i.hintClose}` }, "Off. Increase amount to sharpen after resize.")), /* @__PURE__ */ e.createElement(n, { title: "Delivery" }, /* @__PURE__ */ e.createElement("div", { className: i.segments }, Z.length !== 1 && /* @__PURE__ */ e.createElement("button", {
-		onClick: () => T("zip"),
-		className: `${i.grow} ${a(w === "zip")}`
+		onChange: W
+	}), V === 0 && /* @__PURE__ */ e.createElement("p", { className: `${i.note} ${i.hintClose}` }, "Off. Increase amount to sharpen after resize.")), /* @__PURE__ */ e.createElement(n, { title: "Delivery" }, /* @__PURE__ */ e.createElement("div", { className: i.segments }, Z.length !== 1 && /* @__PURE__ */ e.createElement("button", {
+		onClick: () => O("zip"),
+		className: `${i.grow} ${a(D === "zip")}`
 	}, "ZIP"), /* @__PURE__ */ e.createElement("button", {
-		onClick: () => T("files"),
-		className: `${i.grow} ${a(w === "files")}`
+		onClick: () => O("files"),
+		className: `${i.grow} ${a(D === "files")}`
 	}, "Files"), Z.length !== 1 && /* @__PURE__ */ e.createElement("button", {
-		onClick: () => T("folder"),
-		className: `${i.grow} ${a(w === "folder")}`
-	}, "Folder")), w === "folder" ? /* @__PURE__ */ e.createElement("p", { className: `${i.note} ${i.hint}` }, E ? /* @__PURE__ */ e.createElement(e.Fragment, null, "Saving to ", /* @__PURE__ */ e.createElement("span", { className: i.dest }, E.name), ".", " ", /* @__PURE__ */ e.createElement("button", {
-		onClick: () => void Se(),
+		onClick: () => O("folder"),
+		className: `${i.grow} ${a(D === "folder")}`
+	}, "Folder")), D === "folder" ? /* @__PURE__ */ e.createElement("p", { className: `${i.note} ${i.hint}` }, k ? /* @__PURE__ */ e.createElement(e.Fragment, null, "Saving to ", /* @__PURE__ */ e.createElement("span", { className: i.dest }, k.name), ".", " ", /* @__PURE__ */ e.createElement("button", {
+		onClick: () => void Ee(),
 		className: i.link
-	}, "Change...")) : "A folder picker will open on export.") : w === "zip" ? /* @__PURE__ */ e.createElement("p", { className: `${i.note} ${i.hint}` }, "All photos in a single ZIP download.") : /* @__PURE__ */ e.createElement("p", { className: `${i.note} ${i.hint}` }, "One download prompt per photo.")), q.length > 0 && /* @__PURE__ */ e.createElement(n, {
+	}, "Change...")) : "A folder picker will open on export.") : D === "zip" ? /* @__PURE__ */ e.createElement("p", { className: `${i.note} ${i.hint}` }, "All photos in a single ZIP download.") : /* @__PURE__ */ e.createElement("p", { className: `${i.note} ${i.hint}` }, "One download prompt per photo.")), J.length > 0 && /* @__PURE__ */ e.createElement(n, {
 		title: "Filename",
 		defaultOpen: !1
 	}, /* @__PURE__ */ e.createElement("div", { className: i.stack }, /* @__PURE__ */ e.createElement("button", {
 		onClick: () => X(void 0),
 		className: `${i.left} ${a(Y === void 0)}`
-	}, "Default"), q.map((t) => /* @__PURE__ */ e.createElement("button", {
+	}, "Default"), J.map((t) => /* @__PURE__ */ e.createElement("button", {
 		key: t.id,
 		onClick: () => X(t.id),
 		className: `${i.left} ${a(Y === t.id)}`
-	}, t.label))), we && /* @__PURE__ */ e.createElement("p", { className: `${i.note} ${i.hint} ${i.code}` }, we.template)), de.map((t) => {
-		let r = t.settings ?? [], a = J[t.id] ?? {}, o = (e) => e.key === "enabled" && e.type === "boolean", s = r.find(o), c = r.filter((e) => !o(e));
+	}, t.label))), ke && /* @__PURE__ */ e.createElement("p", { className: `${i.note} ${i.hint} ${i.code}` }, ke.template)), me.map((t) => {
+		let r = t.settings ?? [], a = he[t.id] ?? {}, o = (e) => e.key === "enabled" && e.type === "boolean", s = r.find(o), c = r.filter((e) => !o(e));
 		return /* @__PURE__ */ e.createElement(n, {
 			key: t.id,
 			title: t.label,
 			defaultOpen: !1
-		}, s && /* @__PURE__ */ e.createElement(d, {
+		}, s && /* @__PURE__ */ e.createElement(f, {
 			key: "enabled",
 			field: s,
 			value: a.enabled,
-			onChange: (e) => pe(t.id, "enabled", e)
-		}), c.map((n) => /* @__PURE__ */ e.createElement(d, {
+			onChange: (e) => _e(t.id, "enabled", e)
+		}), c.map((n) => /* @__PURE__ */ e.createElement(f, {
 			key: n.key,
 			field: n,
 			value: a[n.key],
-			onChange: (e) => pe(t.id, n.key, e)
+			onChange: (e) => _e(t.id, n.key, e)
 		})), r.length === 0 && /* @__PURE__ */ e.createElement("p", { className: i.empty }, "No settings."));
-	}), /* @__PURE__ */ e.createElement("div", { className: i.footer }, /* @__PURE__ */ e.createElement("p", { className: i.summary }, Z.length === 0 ? "Select one or more photos in the Library to export." : `${Z.length} photo${Z.length === 1 ? "" : "s"} ready as ${m.split("/")[1].toUpperCase()}.`), /* @__PURE__ */ e.createElement("div", { className: i.actions }, /* @__PURE__ */ e.createElement("button", {
-		onClick: () => void Ce(),
-		disabled: O || Z.length === 0,
+	}), /* @__PURE__ */ e.createElement("div", { className: i.footer }, /* @__PURE__ */ e.createElement("p", { className: i.summary }, Z.length === 0 ? "Select one or more photos in the Library to export." : `${Z.length} photo${Z.length === 1 ? "" : "s"} ready as ${g.split("/")[1].toUpperCase()}.`), /* @__PURE__ */ e.createElement("div", { className: i.actions }, /* @__PURE__ */ e.createElement("button", {
+		onClick: () => void De(),
+		disabled: j || Z.length === 0,
 		className: i.exportButton
-	}, O && A ? `Exporting ${A.done}/${A.total}...` : Z.length > 0 ? `Export ${Z.length}` : "Export"), ue ? /* @__PURE__ */ e.createElement("form", {
+	}, j && P ? `Exporting ${P.done}/${P.total}...` : Z.length > 0 ? `Export ${Z.length}` : "Export"), j && /* @__PURE__ */ e.createElement(s, {
+		size: "sm",
+		onClick: Oe,
+		disabled: ce
+	}, "Cancel"), ue ? /* @__PURE__ */ e.createElement("form", {
 		className: i.presetForm,
 		onSubmit: (e) => {
-			e.preventDefault(), be();
+			e.preventDefault(), we();
 		}
 	}, /* @__PURE__ */ e.createElement("input", {
 		type: "text",
-		value: U,
-		onChange: (e) => W(e.target.value),
+		value: q,
+		onChange: (e) => de(e.target.value),
 		placeholder: "Preset name",
 		"aria-label": "Export preset name",
 		autoFocus: !0,
 		className: `${i.textInput} ${i.presetName}`,
 		onKeyDown: (e) => {
-			e.key === "Escape" && H(!1);
+			e.key === "Escape" && K(!1);
 		}
 	}), /* @__PURE__ */ e.createElement("button", {
 		type: "submit",
-		disabled: !U.trim(),
+		disabled: !q.trim(),
 		className: i.save
 	}, "Save")) : /* @__PURE__ */ e.createElement("button", {
-		onClick: () => H(!0),
+		onClick: () => K(!0),
 		className: i.saveOpen,
 		title: "Save current settings as a preset"
 	}, "Save...")), /* @__PURE__ */ e.createElement("p", {
 		role: "status",
 		"aria-live": "polite",
-		className: M ? `${i.status} ${i.statusShown}` : i.status
-	}, M), /* @__PURE__ */ e.createElement(ee, { failures: le }), F && /* @__PURE__ */ e.createElement("button", {
-		onClick: () => void t.project.reveal(F),
+		className: I ? `${i.status} ${i.statusShown}` : i.status
+	}, I), /* @__PURE__ */ e.createElement(ee, { failures: le }), z && /* @__PURE__ */ e.createElement("button", {
+		onClick: () => void t.project.reveal(z),
 		className: i.reveal
 	}, "Open Folder")), /* @__PURE__ */ e.createElement(n, {
 		title: "Privacy",
 		defaultOpen: !1
-	}, /* @__PURE__ */ e.createElement("p", { className: i.note }, C ? ce ? "Camera, exposure and GPS location tags are copied into exported files, as set in Preferences > Export." : "Camera and exposure tags are copied into exported files; GPS location is stripped. Configured in Preferences > Export." : "Exports carry no EXIF or location metadata. Metadata can be enabled in Preferences > Export.", " ", "Everything is rendered locally; nothing leaves your device.")));
+	}, /* @__PURE__ */ e.createElement("p", { className: i.note }, T ? E ? "Camera, exposure and GPS location tags are copied into exported files, as set in Preferences > Export." : "Camera and exposure tags are copied into exported files; GPS location is stripped. Configured in Preferences > Export." : "Exports carry no EXIF or location metadata. Metadata can be enabled in Preferences > Export.", " ", "Everything is rendered locally; nothing leaves your device.")));
 }
 //#endregion
 //#region src/index.tsx
-var p = "core.export", m = "safelight.export.styles";
-function h(e) {
+var m = "core.export", h = "safelight.export.styles";
+function g(e) {
 	n(e), e.registerStylesheet({
-		id: m,
+		id: h,
 		css: l(e.ui.tokens)
 	}), e.registerPanel({
-		id: p,
+		id: m,
 		title: "Export",
-		component: f,
+		component: p,
 		defaultDock: {
 			module: "library",
 			direction: "right",
@@ -449,6 +456,6 @@ function h(e) {
 	});
 }
 //#endregion
-export { p as PANEL_ID, m as STYLESHEET_ID, h as activate };
+export { m as PANEL_ID, h as STYLESHEET_ID, g as activate };
 
 //# sourceMappingURL=index.js.map

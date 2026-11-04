@@ -1,4 +1,4 @@
-// A stand-in Safelight API over real React and zustand. The catalog, settings
+// A stand-in Safelight API over real React and zustand. The catalogue, settings
 // and registry are real stores seeded the way core seeds them; Panel, Slider
 // and ResolutionControl are small accessible stand-ins for core's components;
 // `api.export` and `api.project` record their calls and answer with what the

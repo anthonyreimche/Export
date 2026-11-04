@@ -43,7 +43,7 @@ describe("what the panel exports", () => {
     expect(exportButton().disabled).toBe(true);
   });
 
-  it("exports the selection, in catalog order", async () => {
+  it("exports the selection, in catalogue order", async () => {
     const rig = mount({ selected: ["c", "a"] });
     expect(screen.getByText("2 photos ready as JPEG.")).not.toBeNull();
     expect(exportButton().textContent).toBe("Export 2");

@@ -20,7 +20,7 @@ export interface StoreApi<T> {
   subscribe(listener: (state: T, prev: T) => void): () => void;
 }
 
-/** A catalog record. Core's carries much more; this extension only lists and
+/** A catalogue record. Core's carries much more; this extension only lists and
  *  counts photos and hands them back to `api.export.exportPhotos`. */
 export interface CatalogPhoto {
   id: string;
@@ -93,7 +93,7 @@ export interface ExportSettings {
   includeLocation?: boolean;
   /** A folder export's answer to a file of the same name already there:
    *  "number" writes beside it as "name (2).ext", "replace" writes over it.
-   *  The original of a photo in the catalog is never replaced; it gets a
+   *  The original of a photo in the catalogue is never replaced; it gets a
    *  number either way. Left out, the Preference decides. */
   ifExists?: "number" | "replace";
 }
