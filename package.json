@@ -1,7 +1,7 @@
 {
   "name": "safelight-export",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Export extension for Safelight: export photos with format, size and quality options.",
   "type": "module",
   "scripts": {

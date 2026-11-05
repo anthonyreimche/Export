@@ -1,7 +1,7 @@
 {
   "id": "safelight.export",
   "name": "Export",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Export photos with format, size and quality options.",
   "author": "Anthony Reimche",
   "main": "dist/index.js",
