@@ -8,7 +8,6 @@
 // Rendering, encoding and delivery stay in core, behind `api.export`.
 
 import { ExportFailureList } from "./ExportFailureList";
-import { exportStatus } from "./export-status";
 import { React, api } from "./rt";
 import type {
   ColorSpaceId,
@@ -20,7 +19,7 @@ import type {
   ExportSettings,
   ProcessorSettings,
 } from "./safelight";
-import { cls, optClass } from "./styles";
+import { cls } from "./styles";
 
 const FORMATS: { value: ExportFormat; label: string }[] = [
   { value: "image/jpeg", label: "JPEG" },
@@ -29,15 +28,19 @@ const FORMATS: { value: ExportFormat; label: string }[] = [
   { value: "image/tiff", label: "TIFF" },
 ];
 
-const BIT_DEPTHS: { value: 8 | 16; label: string }[] = [
-  { value: 8, label: "8-bit" },
-  { value: 16, label: "16-bit" },
+const BIT_DEPTHS: { value: string; label: string; title: string }[] = [
+  { value: "8", label: "8-bit", title: "8-bit is smaller and universally compatible." },
+  {
+    value: "16",
+    label: "16-bit",
+    title: "16-bit keeps the full editing precision for further work. Output sharpening is applied at 8-bit only.",
+  },
 ];
 
 const PICKER_ID = "safelight-export";
 
-/** One settings field of an export processor, styled like the panel's own
- *  controls (toggles, sliders, text inputs, button-group selects). */
+/** One settings field of an export processor, drawn with the app's own
+ *  controls (toggles, sliders, text inputs, segmented selects). */
 function ProcessorFieldRow({
   field,
   value,
@@ -48,20 +51,11 @@ function ProcessorFieldRow({
   onChange: (v: unknown) => void;
 }) {
   const { Slider } = api.components;
+  const { Toggle, TextInput, SegmentedControl } = api.ui;
 
   if (field.type === "boolean") {
     const checked = typeof value === "boolean" ? value : field.default;
-    return (
-      <label className={cls.toggleRow}>
-        <span className={cls.toggleLabel}>{field.label}</span>
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={(e) => onChange(e.target.checked)}
-          className={cls.checkbox}
-        />
-      </label>
-    );
+    return <Toggle label={field.label} checked={checked} onChange={onChange} />;
   }
 
   if (field.type === "number") {
@@ -84,13 +78,7 @@ function ProcessorFieldRow({
     return (
       <label className={cls.stack}>
         <span className={cls.fieldLabel}>{field.label}</span>
-        <input
-          type="text"
-          value={str}
-          placeholder={field.placeholder}
-          onChange={(e) => onChange(e.target.value)}
-          className={cls.textInput}
-        />
+        <TextInput value={str} placeholder={field.placeholder} onChange={onChange} />
       </label>
     );
   }
@@ -100,13 +88,7 @@ function ProcessorFieldRow({
     return (
       <div className={cls.stack}>
         <span className={cls.fieldLabel}>{field.label}</span>
-        <div className={cls.choices}>
-          {field.options.map((opt) => (
-            <button key={opt.value} onClick={() => onChange(opt.value)} className={optClass(sel === opt.value)}>
-              {opt.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl size="sm" value={sel} onChange={onChange} options={field.options} />
       </div>
     );
   }
@@ -116,11 +98,9 @@ function ProcessorFieldRow({
 
 export function ExportPanel() {
   const { Panel, Slider, ResolutionControl } = api.components;
-  const { Button } = api.ui;
-  const { useCatalogStore, useSettings } = api.stores;
-  const photos = useCatalogStore((s) => s.photos);
-  const selectedIds = useCatalogStore((s) => s.selectedIds);
-  const activePhotoId = useCatalogStore((s) => s.activePhotoId);
+  const { Button, TextInput, SegmentedControl } = api.ui;
+  const { useSettings } = api.stores;
+  const targets = api.catalog.useTargetPhotos();
 
   // Defaults come from Preferences > Export; the panel state is per-session.
   const seed = () => useSettings.getState();
@@ -178,16 +158,6 @@ export function ExportPanel() {
       [procId]: { ...(prev[procId] ?? {}), [key]: value },
     }));
   };
-
-  // The selection, else the single active photo.
-  const targets = React.useMemo(() => {
-    if (selectedIds.size > 0) return photos.filter((p) => selectedIds.has(p.id));
-    if (activePhotoId) {
-      const p = photos.find((ph) => ph.id === activePhotoId);
-      return p ? [p] : [];
-    }
-    return [];
-  }, [photos, selectedIds, activePhotoId]);
 
   const hasQuality = format === "image/jpeg" || format === "image/webp";
   const isTiff = format === "image/tiff";
@@ -289,7 +259,7 @@ export function ExportPanel() {
         dir ?? undefined,
         { signal: run.signal },
       );
-      setStatus(exportStatus(result));
+      setStatus(api.export.describeResult(result));
       setFailures(result.failures);
       if (delivery === "folder" && result.exported > 0) {
         const revealPath = dir ? api.project.pathOf(dir) : null;
@@ -310,8 +280,12 @@ export function ExportPanel() {
     setCancelling(true);
   };
 
-  const template =
-    filenameTemplateId === undefined ? undefined : filenameTemplates.find((t) => t.id === filenameTemplateId);
+  const everyDelivery: { value: DeliveryMode; label: string; title: string }[] = [
+    { value: "zip", label: "ZIP", title: "All photos in a single ZIP download." },
+    { value: "files", label: "Files", title: "One download prompt per photo." },
+    { value: "folder", label: "Folder", title: "A folder picker opens on export." },
+  ];
+  const deliveryOptions = everyDelivery.filter((o) => targets.length !== 1 || o.value === "files");
 
   return (
     <div className={cls.root}>
@@ -320,12 +294,14 @@ export function ExportPanel() {
           <div className={cls.stack}>
             {presets.map((p) => (
               <div key={p.name} className={cls.presetRow}>
-                <button onClick={() => loadPreset(p)} className={`${cls.grow} ${cls.left} ${optClass(false)}`}>
-                  {p.name}
-                </button>
-                <button onClick={() => deletePreset(p.name)} className={cls.presetDelete} title="Delete preset">
+                <div className={cls.grow}>
+                  <Button size="sm" full onClick={() => loadPreset(p)}>
+                    {p.name}
+                  </Button>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => deletePreset(p.name)} title="Delete preset">
                   {"×"}
-                </button>
+                </Button>
               </div>
             ))}
           </div>
@@ -333,53 +309,30 @@ export function ExportPanel() {
       )}
 
       <Panel title="Format">
-        <div className={cls.segments}>
-          {FORMATS.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setFormat(f.value)}
-              aria-pressed={format === f.value}
-              className={`${cls.grow} ${optClass(format === f.value)}`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl value={format} onChange={(v) => setFormat(FORMATS.find((f) => f.value === v)?.value ?? format)} options={FORMATS} />
         {bandsAt8Bit && (
           <div className={cls.warning}>
             <p className={`${cls.grow} ${cls.note}`}>ProPhoto at 8 bits can band in smooth gradients.</p>
-            <button
+            <Button
+              size="sm"
               onClick={() => {
                 setFormat("image/tiff");
                 setTiffBitDepth(16);
               }}
-              className={`${cls.fixed} ${optClass(false)}`}
             >
               Use 16-bit TIFF
-            </button>
+            </Button>
           </div>
         )}
       </Panel>
 
       {hasBitDepth && (
         <Panel title="Bit Depth">
-          <div className={cls.segments}>
-            {BIT_DEPTHS.map((d) => (
-              <button
-                key={d.value}
-                onClick={() => setBitDepth(d.value)}
-                aria-pressed={bitDepth === d.value}
-                className={`${cls.grow} ${optClass(bitDepth === d.value)}`}
-              >
-                {d.label}
-              </button>
-            ))}
-          </div>
-          <p className={`${cls.note} ${cls.hint}`}>
-            {bitDepth === 16
-              ? "16-bit keeps the full editing precision for further work. Output sharpening is applied at 8-bit only."
-              : "8-bit is smaller and universally compatible."}
-          </p>
+          <SegmentedControl
+            value={String(bitDepth)}
+            onChange={(v) => setBitDepth(v === "16" ? 16 : 8)}
+            options={BIT_DEPTHS}
+          />
         </Panel>
       )}
 
@@ -390,8 +343,9 @@ export function ExportPanel() {
       )}
 
       <Panel title="Resolution">
-        <ResolutionControl variant="panel" value={longEdge} onChange={setLongEdge} />
-        <p className={`${cls.note} ${cls.hint}`}>Long edge. Output is capped at the largest decodable size.</p>
+        <div title="Long edge. Output is capped at the largest decodable size.">
+          <ResolutionControl variant="panel" value={longEdge} onChange={setLongEdge} />
+        </div>
       </Panel>
 
       <Panel title="Output Sharpening" defaultOpen={false}>
@@ -413,70 +367,42 @@ export function ExportPanel() {
           defaultValue={1}
           onChange={setSharpenRadius}
         />
-        {sharpenAmount === 0 && (
-          <p className={`${cls.note} ${cls.hintClose}`}>Off. Increase amount to sharpen after resize.</p>
-        )}
       </Panel>
 
       <Panel title="Delivery">
-        <div className={cls.segments}>
-          {targets.length !== 1 && (
-            <button onClick={() => setDelivery("zip")} className={`${cls.grow} ${optClass(delivery === "zip")}`}>
-              ZIP
-            </button>
-          )}
-          <button onClick={() => setDelivery("files")} className={`${cls.grow} ${optClass(delivery === "files")}`}>
-            Files
-          </button>
-          {targets.length !== 1 && (
-            <button
-              onClick={() => setDelivery("folder")}
-              className={`${cls.grow} ${optClass(delivery === "folder")}`}
-            >
-              Folder
-            </button>
-          )}
-        </div>
-        {delivery === "folder" ? (
+        <SegmentedControl
+          value={delivery}
+          onChange={(v) => setDelivery(deliveryOptions.find((o) => o.value === v)?.value ?? delivery)}
+          options={deliveryOptions}
+        />
+        {delivery === "folder" && destDir && (
           <p className={`${cls.note} ${cls.hint}`}>
-            {destDir ? (
-              <>
-                Saving to <span className={cls.dest}>{destDir.name}</span>.{" "}
-                <button onClick={() => void pickFolder()} className={cls.link}>
-                  Change...
-                </button>
-              </>
-            ) : (
-              "A folder picker will open on export."
-            )}
+            Saving to <span className={cls.dest}>{destDir.name}</span>.{" "}
+            <Button variant="ghost" size="sm" onClick={() => void pickFolder()}>
+              Change...
+            </Button>
           </p>
-        ) : delivery === "zip" ? (
-          <p className={`${cls.note} ${cls.hint}`}>All photos in a single ZIP download.</p>
-        ) : (
-          <p className={`${cls.note} ${cls.hint}`}>One download prompt per photo.</p>
         )}
       </Panel>
 
       {filenameTemplates.length > 0 && (
         <Panel title="Filename" defaultOpen={false}>
           <div className={cls.stack}>
-            <button
-              onClick={() => setFilenameTemplateId(undefined)}
-              className={`${cls.left} ${optClass(filenameTemplateId === undefined)}`}
-            >
+            <Button full active={filenameTemplateId === undefined} onClick={() => setFilenameTemplateId(undefined)}>
               Default
-            </button>
+            </Button>
             {filenameTemplates.map((t) => (
-              <button
+              <Button
                 key={t.id}
+                full
+                active={filenameTemplateId === t.id}
+                title={t.template}
                 onClick={() => setFilenameTemplateId(t.id)}
-                className={`${cls.left} ${optClass(filenameTemplateId === t.id)}`}
               >
                 {t.label}
-              </button>
+              </Button>
             ))}
           </div>
-          {template && <p className={`${cls.note} ${cls.hint} ${cls.code}`}>{template.template}</p>}
         </Panel>
       )}
 
@@ -517,17 +443,18 @@ export function ExportPanel() {
             : `${targets.length} photo${targets.length === 1 ? "" : "s"} ready as ${format.split("/")[1].toUpperCase()}.`}
         </p>
         <div className={cls.actions}>
-          <button
+          <Button
+            variant="primary"
+            full
             onClick={() => void handleExport()}
             disabled={busy || targets.length === 0}
-            className={cls.exportButton}
           >
             {busy && progress
               ? `Exporting ${progress.done}/${progress.total}...`
               : targets.length > 0
                 ? `Export ${targets.length}`
                 : "Export"}
-          </button>
+          </Button>
           {busy && (
             <Button size="sm" onClick={cancelExport} disabled={cancelling}>
               Cancel
@@ -541,30 +468,26 @@ export function ExportPanel() {
                 savePreset();
               }}
             >
-              <input
-                type="text"
-                value={presetName}
-                onChange={(e) => setPresetName(e.target.value)}
-                placeholder="Preset name"
-                aria-label="Export preset name"
-                autoFocus
-                className={`${cls.textInput} ${cls.presetName}`}
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") setSavingPreset(false);
-                }}
-              />
-              <button type="submit" disabled={!presetName.trim()} className={cls.save}>
+              <div className={cls.presetName}>
+                <TextInput
+                  value={presetName}
+                  onChange={setPresetName}
+                  placeholder="Preset name"
+                  aria-label="Export preset name"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") setSavingPreset(false);
+                  }}
+                />
+              </div>
+              <Button type="submit" size="sm" disabled={!presetName.trim()}>
                 Save
-              </button>
+              </Button>
             </form>
           ) : (
-            <button
-              onClick={() => setSavingPreset(true)}
-              className={cls.saveOpen}
-              title="Save current settings as a preset"
-            >
+            <Button size="sm" onClick={() => setSavingPreset(true)} title="Save current settings as a preset">
               Save...
-            </button>
+            </Button>
           )}
         </div>
         {/* Kept mounted so the live region announces the first result too. */}
@@ -573,9 +496,9 @@ export function ExportPanel() {
         </p>
         <ExportFailureList failures={failures} />
         {exportedDir && (
-          <button onClick={() => void api.project.reveal(exportedDir)} className={cls.reveal}>
+          <Button size="sm" full onClick={() => void api.project.reveal(exportedDir)}>
             Open Folder
-          </button>
+          </Button>
         )}
       </div>
 

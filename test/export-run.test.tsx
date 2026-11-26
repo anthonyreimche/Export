@@ -3,7 +3,7 @@
 // exportPhotos, what it shows when the run ends, and the sections extensions
 // contribute (export processors, filename templates).
 
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { ExportPanel } from "../src/ExportPanel";
 import { React, initRuntime } from "../src/rt";
@@ -70,18 +70,17 @@ describe("what the panel exports", () => {
 describe("delivery", () => {
   it("offers ZIP, Files and Folder for several photos, Folder first", () => {
     mount({ selected: ["a", "b"] });
-    expect(screen.getByText("A folder picker will open on export.")).not.toBeNull();
-    fireEvent.click(button("ZIP"));
-    expect(screen.getByText("All photos in a single ZIP download.")).not.toBeNull();
-    fireEvent.click(button("Files"));
-    expect(screen.getByText("One download prompt per photo.")).not.toBeNull();
+    expect(button("Folder").title).toBe("A folder picker opens on export.");
+    expect(button("ZIP").title).toBe("All photos in a single ZIP download.");
+    expect(button("Files").title).toBe("One download prompt per photo.");
+    expect(screen.queryByText("A folder picker will open on export.")).toBeNull();
   });
 
   it("offers only Files for a single photo", () => {
     mount({ selected: ["a"] });
     expect(screen.queryByRole("button", { name: "ZIP" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Folder" })).toBeNull();
-    expect(screen.getByText("One download prompt per photo.")).not.toBeNull();
+    expect(button("Files").title).toBe("One download prompt per photo.");
   });
 
   it("opens the folder picker on export and sends the files into the folder picked", async () => {
@@ -167,7 +166,6 @@ describe("the settings an export runs with", () => {
     fireEvent.click(button("2048 px"));
     fireEvent.click(button("Output Sharpening"));
     fireEvent.change(screen.getByRole("slider", { name: "Amount" }), { target: { value: "40" } });
-    expect(screen.queryByText("Off. Increase amount to sharpen after resize.")).toBeNull();
     await runExport();
     expect(rig.exports[0].settings).toMatchObject({
       format: "image/tiff",
@@ -208,7 +206,7 @@ describe("the end of a run", () => {
     expect(button("Exporting 1/2...")).not.toBeNull();
 
     await act(async () => finish({ ...RESULT, exported: 1, failed: ["b.RAF"], failures: [{ filename: "b.RAF", reason: "The original isn't available." }] }));
-    expect(status()).toBe("Exported 1; 1 could not be exported.");
+    expect(status()).toBe("described: 1 exported, 1 failed");
     expect(screen.getByRole("listitem").textContent).toBe("b.RAF: The original isn't available.");
     expect(exportButton().textContent).toBe("Export 2");
   });
@@ -228,7 +226,7 @@ describe("the end of a run", () => {
     expect(button("Cancel").hasAttribute("disabled")).toBe(true);
 
     await act(async () => finish({ ...RESULT, exported: 1, cancelled: true }));
-    expect(status()).toBe("Cancelled after exporting 1 photo.");
+    expect(status()).toBe("described: 1 exported, 0 failed");
     expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
   });
 
@@ -246,7 +244,15 @@ describe("the end of a run", () => {
     fireEvent.click(button("Files"));
     rig.nextExport.result = { ...RESULT, exported: 2, failed: ["c.RAF"], stopped: "the disk is full" };
     await runExport();
-    expect(status()).toBe("Stopped: the disk is full, after exporting 2 photos.");
+    expect(status()).toBe("described: 2 exported, 1 failed");
+  });
+
+  it("words the result with core's describeResult, not its own copy", async () => {
+    const rig = mount({ selected: ["a", "b"] });
+    fireEvent.click(button("Files"));
+    rig.nextExport.result = { ...RESULT, exported: 2, degradedTo8Bit: 1 };
+    await runExport();
+    expect(status()).toBe("described: 2 exported, 0 failed");
   });
 
   it("says why when the export throws", async () => {
@@ -343,8 +349,8 @@ describe("what extensions contribute", () => {
 
     fireEvent.click(button("Watermark"));
     const section = screen.getByRole("region", { name: "Watermark" });
-    const labels = [...section.querySelectorAll("label > span, div > span")].map((s) => s.textContent);
-    expect(labels).toEqual(["Enabled", "Text", "Corner"]);
+    expect(within(section).getByRole("switch", { name: "Enabled" })).not.toBeNull();
+    expect(section.textContent).toMatch(/^Watermark.*Enabled.*Text.*Corner/);
     expect(screen.getByRole("slider", { name: "Size" })).not.toBeNull();
   });
 
@@ -352,11 +358,12 @@ describe("what extensions contribute", () => {
     const rig = mount({ active: "a" });
     act(() => rig.registry.setState({ exportProcessors: processors }));
     fireEvent.click(button("Watermark"));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Enabled" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Enabled" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Text" }), { target: { value: "AR" } });
     fireEvent.click(button("Top left"));
     fireEvent.change(screen.getByRole("slider", { name: "Size" }), { target: { value: "20" } });
-    expect(button("Top left").className).toContain("safelight-export-opt-active");
+    expect(button("Top left").getAttribute("aria-pressed")).toBe("true");
+    expect(button("Bottom right").getAttribute("aria-pressed")).toBe("false");
 
     await runExport();
     expect(rig.exports[0].settings.processorSettings).toEqual({
@@ -374,7 +381,7 @@ describe("what extensions contribute", () => {
     );
     fireEvent.click(button("Filename"));
     fireEvent.click(button("By date"));
-    expect(screen.getByText("{year}-{month}-{filename}")).not.toBeNull();
+    expect(button("By date").title).toBe("{year}-{month}-{filename}");
     await runExport();
     expect(rig.exports[0].settings.filenameTemplateId).toBe("ext.date");
 

@@ -1,31 +1,54 @@
-// A stand-in Safelight API over real React and zustand. The catalogue, settings
-// and registry are real stores seeded the way core seeds them; Panel, Slider
-// and ResolutionControl are small accessible stand-ins for core's components;
-// `api.export` and `api.project` record their calls and answer with what the
-// test queued. proPhotoAt8Bit is core's rule.
+// A stand-in Safelight API over real React and zustand, with only what this
+// extension uses: reading any other member throws, naming it. The catalogue,
+// settings and registry are real stores seeded the way core seeds them; Panel,
+// Slider, ResolutionControl and the ui kit are small accessible stand-ins for
+// core's components (the segmented control marks its chosen option with
+// aria-pressed so tests can read it); `api.export` and `api.project` record
+// their calls and answer with what the test queued. proPhotoAt8Bit is core's
+// rule, and describeResult answers with a marker so a test sees the panel show
+// core's wording rather than its own.
 
 import * as React from "react";
-import { create } from "zustand";
+import { create, type StoreApi, type UseBoundStore } from "zustand";
 import type {
   AppSettings,
   ButtonProps,
   CatalogPhoto,
-  CatalogStoreState,
+  CatalogState,
+  ExportPhotosOptions,
   ExportProgress,
   ExportResult,
   ExportSettings,
   PanelContribution,
   PanelProps,
   RegistryState,
-  ResolutionControlProps,
   SafelightAPI,
+  SegmentedControlProps,
   SliderProps,
-  StoreApi,
   StylesheetContribution,
-  UiTokens,
+  TextInputProps,
+  ToggleProps,
+  UITokens,
 } from "../../src/safelight";
 
-export const TOKENS: UiTokens = {
+type FakeCatalog = Pick<CatalogState, "photos" | "selectedIds" | "activePhotoId">;
+type FakeSettings = Pick<
+  AppSettings,
+  | "exportFormat"
+  | "exportQuality"
+  | "exportLongEdge"
+  | "exportColorSpace"
+  | "exportTiffBitDepth"
+  | "exportPngBitDepth"
+  | "exportIncludeMetadata"
+  | "exportIncludeLocation"
+  | "exportPresets"
+>;
+
+export const TOKENS: Pick<
+  UITokens,
+  "surface2" | "surface3" | "surface4" | "textPrimary" | "textSecondary" | "textMuted" | "sliderFill" | "white" | "fontCode"
+> = {
   surface2: "var(--color-surface-2)",
   surface3: "var(--color-surface-3)",
   surface4: "var(--color-surface-4)",
@@ -38,7 +61,7 @@ export const TOKENS: UiTokens = {
 };
 
 /** Core's Preferences ▸ Export defaults (src/state/settings-store.ts). */
-export const DEFAULT_SETTINGS: AppSettings = {
+export const DEFAULT_SETTINGS: FakeSettings = {
   exportFormat: "image/jpeg",
   exportQuality: 90,
   exportLongEdge: null,
@@ -69,9 +92,9 @@ export interface ExportCall {
 
 export interface Rig {
   api: SafelightAPI;
-  catalog: StoreApi<CatalogStoreState>;
-  settings: StoreApi<AppSettings>;
-  registry: StoreApi<RegistryState>;
+  catalog: UseBoundStore<StoreApi<FakeCatalog>>;
+  settings: UseBoundStore<StoreApi<FakeSettings>>;
+  registry: UseBoundStore<StoreApi<RegistryState>>;
   panels: PanelContribution[];
   stylesheets: StylesheetContribution[];
   /** Every `api.appSettings.update` patch, in order. */
@@ -85,7 +108,28 @@ export interface Rig {
   reveals: string[];
 }
 
-export const photo = (id: string): CatalogPhoto => ({ id, filename: `${id}.RAF` });
+export const photo = (id: string): CatalogPhoto => ({
+  id,
+  filename: `${id}.RAF`,
+  relPath: `${id}.RAF`,
+  folder: "",
+  directoryHandle: null,
+  fileHandle: null,
+  thumbnailBlob: null,
+  thumbnailUrl: null,
+  width: 6000,
+  height: 4000,
+  fileSize: 1,
+  mimeType: "image/x-fuji-raf",
+  rating: 0,
+  colorLabel: "none",
+  flag: "none",
+  rotation: 0,
+  keywords: [],
+  dateCreated: 0,
+  dateImported: 0,
+  exif: {},
+});
 
 export const RESULT: ExportResult = { exported: 0, failed: [], degradedTo8Bit: 0, reducedPrecision: 0 };
 
@@ -111,11 +155,49 @@ function FakeSlider({ label, value, min, max, step, onChange }: SliderProps) {
   });
 }
 
-function FakeButton({ variant: _variant, size: _size, type = "button", ...rest }: ButtonProps) {
+function FakeButton({ variant: _variant, size: _size, active: _active, full: _full, type = "button", ...rest }: ButtonProps) {
   return React.createElement("button", { type, ...rest });
 }
 
-function FakeResolutionControl({ value, onChange }: ResolutionControlProps) {
+function FakeToggle({ checked, onChange, label, ariaLabel }: ToggleProps) {
+  return React.createElement(
+    "label",
+    null,
+    label != null ? React.createElement("span", null, label) : null,
+    React.createElement("button", {
+      type: "button",
+      role: "switch",
+      "aria-checked": checked,
+      "aria-label": ariaLabel ?? (typeof label === "string" ? label : undefined),
+      onClick: () => onChange(!checked),
+    }),
+  );
+}
+
+function FakeTextInput({ value, onChange, ...rest }: TextInputProps) {
+  return React.createElement("input", {
+    type: "text",
+    value,
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value),
+    ...rest,
+  });
+}
+
+function FakeSegmentedControl({ value, onChange, options }: SegmentedControlProps) {
+  return React.createElement(
+    "div",
+    null,
+    options.map((o) =>
+      React.createElement(
+        "button",
+        { key: o.value, type: "button", title: o.title, "aria-pressed": value === o.value, onClick: () => onChange(o.value) },
+        o.label,
+      ),
+    ),
+  );
+}
+
+function FakeResolutionControl({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) {
   const option = (v: number | null, label: string) =>
     React.createElement("button", { key: label, "aria-pressed": value === v, onClick: () => onChange(v) }, label);
   return React.createElement("div", null, option(null, "Original"), option(2048, "2048 px"));
@@ -124,6 +206,34 @@ function FakeResolutionControl({ value, onChange }: ResolutionControlProps) {
 function proPhotoAt8Bit(s: Pick<ExportSettings, "format" | "tiffBitDepth" | "pngBitDepth" | "colorSpace">): boolean {
   const asks16 = (s.format === "image/tiff" && s.tiffBitDepth === 16) || (s.format === "image/png" && s.pngBitDepth === 16);
   return s.colorSpace === "prophoto-rgb" && !asks16;
+}
+
+function emptyRegistry(): RegistryState {
+  return {
+    panels: {},
+    themes: {},
+    sliderIcons: {},
+    layouts: {},
+    settings: {},
+    pipelines: {},
+    exportProcessors: {},
+    filenameTemplates: {},
+    processingStages: {},
+    catalogHooks: {},
+    presetImporters: {},
+    gridFilters: {},
+    gridMenuItems: {},
+    slots: {},
+    panelHeaderAccessories: {},
+    librarySorts: {},
+    stylesheets: {},
+    modules: {},
+    thumbnailBadges: {},
+    commands: {},
+    topBarButtons: {},
+    windows: {},
+    layoutMenus: {},
+  };
 }
 
 export function fakeApi({
@@ -135,7 +245,7 @@ export function fakeApi({
   photos?: CatalogPhoto[];
   selected?: string[];
   active?: string | null;
-  prefs?: Partial<AppSettings>;
+  prefs?: Partial<FakeSettings>;
 } = {}): Rig {
   const panels: PanelContribution[] = [];
   const stylesheets: StylesheetContribution[] = [];
@@ -146,53 +256,78 @@ export function fakeApi({
   const pickQueue: (FileSystemDirectoryHandle | null)[] = [];
   const nextExport: Rig["nextExport"] = {};
 
-  const catalog = create<CatalogStoreState>()(() => ({
+  const catalog = create<FakeCatalog>()(() => ({
     photos,
     selectedIds: new Set(selected),
     activePhotoId: active,
   }));
-  const settings = create<AppSettings>()(() => ({ ...DEFAULT_SETTINGS, ...prefs }));
-  const registry = create<RegistryState>()(() => ({ exportProcessors: {}, filenameTemplates: {} }));
+  const settings = create<FakeSettings>()(() => ({ ...DEFAULT_SETTINGS, ...prefs }));
+  const registry = create<RegistryState>()(emptyRegistry);
 
-  const api: SafelightAPI = {
-    version: 1,
+  const members = {
+    version: 1 as const,
     extensionId: "safelight.export",
     react: React,
-    registerPanel: (c) => void panels.push(c),
-    registerStylesheet: (c) => void stylesheets.push(c),
-    ui: { tokens: TOKENS, Button: FakeButton },
+    registerPanel: (c: PanelContribution) => void panels.push(c),
+    registerStylesheet: (c: StylesheetContribution) => void stylesheets.push(c),
+    ui: {
+      tokens: TOKENS,
+      Button: FakeButton,
+      Toggle: FakeToggle,
+      TextInput: FakeTextInput,
+      SegmentedControl: FakeSegmentedControl,
+    },
     components: { Panel: FakePanel, Slider: FakeSlider, ResolutionControl: FakeResolutionControl },
-    stores: { useCatalogStore: catalog, useSettings: settings },
-    registry: { use: (selector) => registry(selector) },
+    stores: { useSettings: settings },
+    catalog: {
+      useTargetPhotos: (): CatalogPhoto[] => {
+        const all = catalog((s) => s.photos);
+        const ids = catalog((s) => s.selectedIds);
+        const activeId = catalog((s) => s.activePhotoId);
+        return React.useMemo(
+          () => (ids.size > 0 ? all.filter((p) => ids.has(p.id)) : all.filter((p) => p.id === activeId)),
+          [all, ids, activeId],
+        );
+      },
+    },
+    registry: { use: <T>(selector: (s: RegistryState) => T): T => registry(selector) },
     appSettings: {
-      update: (patch) => {
+      update: (patch: Partial<AppSettings>) => {
         updates.push(patch);
         settings.setState(patch);
       },
     },
     export: {
-      exportPhotos: (targets, run, onProgress, destDir, options) => {
+      exportPhotos: (
+        targets: CatalogPhoto[],
+        run: ExportSettings,
+        onProgress?: (p: ExportProgress) => void,
+        destDir?: FileSystemDirectoryHandle,
+        options?: ExportPhotosOptions,
+      ): Promise<ExportResult> => {
         exports.push({ photos: targets, settings: run, destDir, onProgress, signal: options?.signal });
         if (nextExport.pending) return nextExport.pending;
         if (nextExport.error) return Promise.reject(nextExport.error);
         return Promise.resolve(nextExport.result ?? { ...RESULT, exported: targets.length });
       },
       proPhotoAt8Bit,
+      describeResult: (r: ExportResult): string => `described: ${r.exported} exported, ${r.failed.length} failed`,
     },
     project: {
-      pickDirectory: async (id) => {
+      pickDirectory: async (id: string) => {
         picks.push(id);
         return pickQueue.shift() ?? null;
       },
-      pathOf: (handle) => (handle as Partial<FakeDir> | null)?.path ?? null,
-      reveal: async (path) => {
+      pathOf: (handle: unknown) => (handle as Partial<FakeDir> | null)?.path ?? null,
+      reveal: async (path: string) => {
         reveals.push(path);
         return true;
       },
     },
   };
   return {
-    api,
+    // The fake covers the members this extension reads; strict() throws on any other.
+    api: strict(members, "api") as unknown as SafelightAPI,
     catalog,
     settings,
     registry,
@@ -205,4 +340,17 @@ export function fakeApi({
     picks,
     reveals,
   };
+}
+
+/** Wraps a plain object so reading a member it lacks throws, naming the member. */
+function strict<T extends object>(target: T, path: string): T {
+  return new Proxy(target, {
+    get(obj, key, receiver) {
+      if (typeof key === "symbol" || key === "then" || key === "toJSON") return Reflect.get(obj, key, receiver);
+      if (!(key in obj)) throw new Error(`The fake API has no ${path}.${key}. Add it to test/support/fake-api.ts.`);
+      const value: unknown = Reflect.get(obj, key, receiver);
+      const isPlainObject = typeof value === "object" && value !== null && Object.getPrototypeOf(value) === Object.prototype;
+      return isPlainObject && key !== "react" && key !== "tokens" ? strict(value, `${path}.${key}`) : value;
+    },
+  });
 }

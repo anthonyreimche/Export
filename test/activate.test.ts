@@ -28,13 +28,8 @@ describe("activate", () => {
     activate(rig.api);
     expect(rig.stylesheets.map((s) => s.id)).toEqual([STYLESHEET_ID]);
     const css = rig.stylesheets[0].css;
-    expect(css).toContain(
-      `:where(.${cls.opt}) { border-radius: 0.25rem; padding: 0.25rem 0.5rem; font-size: 11px; background-color: var(--color-surface-2); color: var(--color-text-muted); }`,
-    );
-    expect(css).toContain(`:where(.${cls.optActive}) { background-color: var(--color-surface-3); color: var(--color-text-primary); }`);
-    expect(css).toContain("background-color: var(--color-slider-fill)");
-    expect(css).toContain("font-family: var(--font-code)");
-    expect(css).toContain(`:where(.${cls.exportButton}:disabled) { cursor: not-allowed; opacity: 0.4; }`);
+    expect(css).toContain(`:where(.${cls.note}) { font-size: 10px; line-height: 1.375; color: var(--color-text-muted); }`);
+    expect(css).toContain(`:where(.${cls.summary}) { font-size: 11px; color: var(--color-text-secondary); }`);
   });
 
   it("styles every class it uses", () => {
@@ -63,7 +58,7 @@ describe("activate", () => {
     const css = rig.stylesheets[0].css;
     expect(css).toMatch(new RegExp(`html\\.sl-larger-text \\.${cls.note}[^{]*\\{ font-size: 12px !important; \\}`));
     expect(css).toMatch(
-      new RegExp(`html\\.sl-larger-text \\.${cls.opt}[^{]*\\{ font-size: 13px !important; line-height: 1\\.45 !important; \\}`),
+      new RegExp(`html\\.sl-larger-text \\.${cls.summary}[^{]*\\{ font-size: 13px !important; line-height: 1\\.45 !important; \\}`),
     );
   });
 });
